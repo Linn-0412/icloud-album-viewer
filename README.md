@@ -22,6 +22,7 @@ iCloud 共有アルバムの公開リンクを読み込み、写真と動画を�
 ALBUM_VIEWER_ADMIN_EMAIL=admin@example.com
 ALBUM_VIEWER_ADMIN_PASSWORD=change-this-password
 ALBUM_VIEWER_SESSION_SECRET=use-a-long-random-string
+CACHE_TTL_SECONDS=60
 ICLOUD_SHARED_ALBUM_URL="https://www.icloud.com/sharedalbum/ja-jp/#..."
 
 SMTP_HOST=smtp.gmail.com
@@ -50,6 +51,8 @@ Cloudflare は無料ホスティングと D1 データベースだけに使い�
 - D1: ユーザー、招待、セッションの保存
 
 Cloudflare Access はこの構成では不要です。アプリ内ログイン画面を使うため、Access アプリは無効化または削除してください。
+
+アルバム一覧のキャッシュは標準で60秒です。急いで反映したい場合は、アルバム画面の `操作` から `更新` を押すとキャッシュを無視して再取得します。
 
 ## Cloudflare 用の環境変数
 

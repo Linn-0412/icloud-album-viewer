@@ -1,7 +1,7 @@
 import { ICloudAlbumError, fetchSharedAlbumAssets, fetchSharedAlbumMetadata } from './icloud.js';
 
-const DEFAULT_CACHE_TTL_SECONDS = 600;
-const ALBUM_CACHE_VERSION = 'date-card-v3';
+const DEFAULT_CACHE_TTL_SECONDS = 60;
+const ALBUM_CACHE_VERSION = 'date-card-v4';
 const MAX_ASSET_IDS = 120;
 
 export function getAlbumUrl(payload = {}, env = {}) {

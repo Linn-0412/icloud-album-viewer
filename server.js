@@ -14,7 +14,7 @@ const { DEFAULT_ALBUM_URL } = require('./src/site-config');
 
 const PORT = Number(process.env.PORT || 4173);
 const PUBLIC_DIR = path.join(__dirname, 'public');
-const CACHE_TTL_MS = Number(process.env.CACHE_TTL_SECONDS || 300) * 1000;
+const CACHE_TTL_MS = Number(process.env.CACHE_TTL_SECONDS || 60) * 1000;
 const SESSION_TTL_SECONDS = Number(process.env.SESSION_TTL_SECONDS || 7 * 24 * 60 * 60);
 const SESSION_TTL_MS = SESSION_TTL_SECONDS * 1000;
 const SESSION_SECRET = process.env.ALBUM_VIEWER_SESSION_SECRET || crypto.randomBytes(32).toString('hex');
