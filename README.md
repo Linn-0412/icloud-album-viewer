@@ -62,9 +62,31 @@ npx wrangler secret put ALBUM_VIEWER_ADMIN_PASSWORD --name icloud-album-viewer
 npx wrangler secret put ALBUM_VIEWER_SESSION_SECRET --name icloud-album-viewer
 ```
 
-招待メールを自動送信したい場合は、Cloudflare Worker から SMTP ではなくメール API を使います。現在の実装は Resend API に対応しています。
+招待メールを自動送信したい場合、Cloudflare Worker から SMTP は直接使えません。独自ドメインがない場合は Google Apps Script を Gmail 送信用の小さな Webhook として使います。
 
-Resend 側で必要なもの:
+Google Apps Script 側の作成手順:
+
+1. https://script.google.com/ を開く
+2. 「新しいプロジェクト」を作成
+3. `docs/google-apps-script-mailer.gs` の内容を貼り付ける
+4. `MAIL_SECRET` を長いランダム文字列に変更
+5. 「デプロイ」>「新しいデプロイ」> 種類で「ウェブアプリ」を選択
+6. 「次のユーザーとして実行」は「自分」
+7. 「アクセスできるユーザー」は「全員」
+8. デプロイして Google の承認を済ませ、表示されたウェブアプリ URL を控える
+
+控えた URL と `MAIL_SECRET` に入れた文字列を Worker secret に設定します。
+
+```bash
+npx wrangler secret put GOOGLE_MAIL_WEBHOOK_URL --name icloud-album-viewer
+npx wrangler secret put GOOGLE_MAIL_WEBHOOK_SECRET --name icloud-album-viewer
+npx wrangler secret put GMAIL_FROM --name icloud-album-viewer
+npx wrangler secret put MAIL_REPLY_TO --name icloud-album-viewer
+```
+
+`GMAIL_FROM` と `MAIL_REPLY_TO` は Gmail アドレスを入れます。メール本文の送信元名は `iCloud Album Viewer` になります。
+
+独自ドメインを取得した場合は Resend も使えます。Resend で必要なもの:
 
 - Resend アカウント
 - 送信元ドメインの認証
@@ -76,7 +98,7 @@ npx wrangler secret put MAIL_FROM --name icloud-album-viewer
 npx wrangler secret put MAIL_REPLY_TO --name icloud-album-viewer
 ```
 
-`RESEND_API_KEY` と `MAIL_FROM` が未設定でも、管理者ページに招待リンクが表示されるためアカウント発行はできます。
+Google Apps Script または Resend が未設定でも、管理者ページに招待リンクが表示されるためアカウント発行はできます。
 
 メール設定後は `/admin` の「メール送信」から、自分宛にテストメールを送れます。
 

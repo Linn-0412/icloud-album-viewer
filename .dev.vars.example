@@ -6,8 +6,14 @@ ALBUM_VIEWER_SESSION_SECRET=use-a-long-random-string
 ALBUM_VIEWER_ADMIN_RESET=false
 INVITE_TTL_HOURS=72
 
-# Cloudflare Workers cannot use Gmail SMTP directly. For automatic
-# invitation emails in the deployed Worker, use an email API such as Resend.
+# Cloudflare Workers cannot use SMTP directly. If you do not own a domain,
+# use Google Apps Script + Gmail for automatic invitation emails.
+# GOOGLE_MAIL_WEBHOOK_URL=https://script.google.com/macros/s/.../exec
+# GOOGLE_MAIL_WEBHOOK_SECRET=use-a-long-random-string
+# GMAIL_FROM=your@gmail.com
+# MAIL_REPLY_TO=your@gmail.com
+
+# Resend requires a verified sending domain for family/member emails.
 # RESEND_API_KEY=re_xxxxxxxxx
 # MAIL_FROM="iCloud Album Viewer <album@example.com>"
 # MAIL_REPLY_TO=album@example.com

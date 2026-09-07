@@ -5,13 +5,21 @@ export function isWorkerMailConfigured(env) {
 }
 
 export function getWorkerMailStatus(env) {
-  const from = getMailFrom(env);
-  const hasResend = Boolean(env.RESEND_API_KEY);
+  const googleWebhook = getGoogleWebhookConfig(env);
+  if (googleWebhook.hasAnySetting) {
+    return {
+      configured: googleWebhook.configured,
+      provider: 'Google Apps Script',
+      from: googleWebhook.from
+    };
+  }
+
+  const resend = getResendConfig(env);
 
   return {
-    configured: Boolean(hasResend && from),
-    provider: hasResend ? 'Resend' : '',
-    from: from || ''
+    configured: resend.configured,
+    provider: resend.hasAnySetting ? 'Resend' : '',
+    from: resend.from
   };
 }
 
@@ -67,8 +75,53 @@ export async function sendTestEmail(env, { to }) {
 }
 
 async function sendEmail(env, { to, subject, text, html }) {
+  const googleWebhook = getGoogleWebhookConfig(env);
+  if (googleWebhook.configured) {
+    return sendGoogleWebhookEmail(env, googleWebhook, { to, subject, text, html });
+  }
+
+  const resend = getResendConfig(env);
+  if (!resend.configured) {
+    return {
+      sent: false,
+      reason: 'メールAPI未設定のため、メールは送信できません。'
+    };
+  }
+
+  return sendResendEmail(env, resend, { to, subject, text, html });
+}
+
+async function sendGoogleWebhookEmail(env, config, { to, subject, text, html }) {
+  const response = await fetch(config.url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      secret: config.secret,
+      to,
+      subject,
+      text,
+      html,
+      replyTo: env.MAIL_REPLY_TO || env.ALBUM_VIEWER_ADMIN_EMAIL || '',
+      senderName: env.MAIL_SENDER_NAME || 'iCloud Album Viewer'
+    })
+  });
+
+  const responseText = await response.text();
+  const payload = parseJsonResponse(responseText);
+
+  if (!response.ok || payload.ok === false) {
+    const message = payload.error || response.statusText || responseText || 'Unknown error';
+    throw new AppError(`メール送信に失敗しました: ${message}`, 502);
+  }
+
+  return { sent: true, provider: 'Google Apps Script' };
+}
+
+async function sendResendEmail(env, config, { to, subject, text, html }) {
   const payload = {
-    from: getMailFrom(env),
+    from: config.from,
     to: [to],
     subject,
     text,
@@ -82,7 +135,7 @@ async function sendEmail(env, { to, subject, text, html }) {
   const response = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${env.RESEND_API_KEY}`,
+      Authorization: `Bearer ${config.apiKey}`,
       'Content-Type': 'application/json'
     },
     body: JSON.stringify(payload)
@@ -95,6 +148,18 @@ async function sendEmail(env, { to, subject, text, html }) {
   }
 
   return { sent: true };
+}
+
+function parseJsonResponse(value) {
+  if (!value) {
+    return {};
+  }
+
+  try {
+    return JSON.parse(value);
+  } catch {
+    return {};
+  }
 }
 
 export function formatJapanTime(value) {
@@ -115,6 +180,28 @@ export function formatJapanTime(value) {
   }).format(date)}（日本時間）`;
 }
 
-function getMailFrom(env) {
-  return env.MAIL_FROM || env.RESEND_FROM || '';
+function getGoogleWebhookConfig(env) {
+  const url = env.GOOGLE_MAIL_WEBHOOK_URL || env.GOOGLE_APPS_SCRIPT_WEBHOOK_URL || '';
+  const secret = env.GOOGLE_MAIL_WEBHOOK_SECRET || env.GOOGLE_APPS_SCRIPT_SECRET || '';
+  const from = env.GMAIL_FROM || env.MAIL_REPLY_TO || env.ALBUM_VIEWER_ADMIN_EMAIL || '';
+
+  return {
+    url,
+    secret,
+    from,
+    configured: Boolean(url && secret),
+    hasAnySetting: Boolean(url || secret || env.GMAIL_FROM)
+  };
+}
+
+function getResendConfig(env) {
+  const from = env.MAIL_FROM || env.RESEND_FROM || '';
+  const apiKey = env.RESEND_API_KEY || '';
+
+  return {
+    apiKey,
+    from,
+    configured: Boolean(apiKey && from),
+    hasAnySetting: Boolean(apiKey || from)
+  };
 }
