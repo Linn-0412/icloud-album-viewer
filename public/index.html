@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>iCloud Album Viewer</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <main class="shell">
+      <section class="toolbar" aria-label="iCloud共有アルバム">
+        <div class="brand">
+          <h1>iCloud Album Viewer</h1>
+          <p id="albumTitle">共有アルバム</p>
+        </div>
+
+        <form id="albumForm" class="album-form">
+          <label class="url-field">
+            <span>URL</span>
+            <input
+              id="albumUrl"
+              name="albumUrl"
+              type="url"
+              autocomplete="off"
+              placeholder="https://www.icloud.com/sharedalbum/#..."
+              required
+            >
+          </label>
+          <button class="primary-button" type="submit" id="loadButton">読み込み</button>
+          <button class="secondary-button refresh-button" type="button" id="refreshButton" disabled>更新</button>
+        </form>
+
+        <div class="controls" aria-label="表示設定">
+          <div class="segmented" role="group" aria-label="並び順">
+            <button type="button" data-sort="asc" class="active">古い順</button>
+            <button type="button" data-sort="desc">新しい順</button>
+          </div>
+          <label class="toggle">
+            <input id="groupByDate" type="checkbox" checked>
+            <span>日付ごと</span>
+          </label>
+          <label class="toggle marker-toggle">
+            <input id="hideMarkers" type="checkbox" checked disabled>
+            <span>日付カード非表示</span>
+          </label>
+          <button class="secondary-button" type="button" id="detectMarkers" disabled>日付カード解析</button>
+          <a class="secondary-button account-link" href="/account">アカウント</a>
+          <a class="secondary-button admin-link" id="adminLink" href="/admin" hidden>管理</a>
+          <button class="secondary-button" type="button" id="logoutButton">ログアウト</button>
+        </div>
+      </section>
+
+      <section class="status-strip" aria-live="polite">
+        <span id="statusText">待機中</span>
+        <span id="countText">0枚</span>
+      </section>
+
+      <section id="gallery" class="gallery" aria-label="写真一覧"></section>
+      <div id="sentinel" class="sentinel" aria-hidden="true"></div>
+    </main>
+
+    <div id="lightbox" class="lightbox" role="dialog" aria-modal="true" aria-label="写真プレビュー" hidden>
+      <div class="lightbox-bar">
+        <button id="prevButton" type="button" class="icon-button" aria-label="前の写真">‹</button>
+        <div class="lightbox-meta">
+          <strong id="lightboxDate"></strong>
+          <span id="lightboxCaption"></span>
+        </div>
+        <a id="openOriginal" class="text-button" target="_blank" rel="noreferrer">原寸</a>
+        <button id="nextButton" type="button" class="icon-button" aria-label="次の写真">›</button>
+        <button id="closeButton" type="button" class="icon-button" aria-label="閉じる">×</button>
+      </div>
+      <img id="lightboxImage" alt="">
+      <video id="lightboxVideo" controls playsinline hidden></video>
+    </div>
+
+    <script src="/app.js" defer></script>
+  </body>
+</html>

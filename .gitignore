@@ -1,0 +1,6 @@
+*.tgz
+node_modules/
+.env
+data/
+package/
+scripts/
