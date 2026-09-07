@@ -1,4 +1,6 @@
 const form = document.querySelector('#albumForm');
+const toolbar = document.querySelector('.toolbar');
+const toolbarToggle = document.querySelector('#toolbarToggle');
 const albumUrlInput = document.querySelector('#albumUrl');
 const loadButton = document.querySelector('#loadButton');
 const refreshButton = document.querySelector('#refreshButton');
@@ -26,6 +28,7 @@ const nextButton = document.querySelector('#nextButton');
 const closeButton = document.querySelector('#closeButton');
 
 const BATCH_SIZE = 80;
+const mobileToolbarQuery = window.matchMedia('(max-width: 980px)');
 const dateFormatter = new Intl.DateTimeFormat('ja-JP', {
   year: 'numeric',
   month: '2-digit',
@@ -50,6 +53,28 @@ let activeIndex = 0;
 let observer = null;
 let assetRequests = new Set();
 let authMode = 'local';
+
+function setToolbarExpanded(expanded) {
+  toolbar.classList.toggle('is-collapsed', !expanded);
+  toolbarToggle.textContent = expanded ? '閉じる' : '操作';
+  toolbarToggle.setAttribute('aria-expanded', String(expanded));
+}
+
+function syncToolbarForViewport(event) {
+  if (mobileToolbarQuery.matches) {
+    toolbarToggle.hidden = false;
+
+    if (!event || event.matches) {
+      setToolbarExpanded(false);
+    }
+
+    return;
+  }
+
+  toolbarToggle.hidden = true;
+  toolbar.classList.remove('is-collapsed');
+  toolbarToggle.setAttribute('aria-expanded', 'true');
+}
 
 function formatDate(value) {
   if (!value) {
@@ -623,6 +648,17 @@ document.addEventListener('keydown', (event) => {
 
 setupInfiniteScroll();
 renderGallery();
+syncToolbarForViewport();
+
+toolbarToggle.addEventListener('click', () => {
+  setToolbarExpanded(toolbar.classList.contains('is-collapsed'));
+});
+
+if (typeof mobileToolbarQuery.addEventListener === 'function') {
+  mobileToolbarQuery.addEventListener('change', syncToolbarForViewport);
+} else {
+  mobileToolbarQuery.addListener(syncToolbarForViewport);
+}
 
 jsonFetch('/api/config')
   .then((response) => readJsonResponse(response, '設定の取得に失敗しました。'))

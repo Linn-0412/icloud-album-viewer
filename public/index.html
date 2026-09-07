@@ -13,6 +13,14 @@
           <h1>iCloud Album Viewer</h1>
           <p id="albumTitle">共有アルバム</p>
         </div>
+        <button
+          class="toolbar-toggle"
+          type="button"
+          id="toolbarToggle"
+          aria-expanded="false"
+          aria-controls="albumForm controlsPanel"
+          hidden
+        >操作</button>
 
         <form id="albumForm" class="album-form">
           <label class="url-field">
@@ -30,7 +38,7 @@
           <button class="secondary-button refresh-button" type="button" id="refreshButton" disabled>更新</button>
         </form>
 
-        <div class="controls" aria-label="表示設定">
+        <div class="controls" id="controlsPanel" aria-label="表示設定">
           <div class="segmented" role="group" aria-label="並び順">
             <button type="button" data-sort="asc" class="active">古い順</button>
             <button type="button" data-sort="desc">新しい順</button>
