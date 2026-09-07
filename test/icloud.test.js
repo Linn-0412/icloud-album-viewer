@@ -185,6 +185,53 @@ test('infers square date cards created on the same day at different times', () =
   );
 });
 
+test('repairs a leading date-card outlier from a daily run', () => {
+  const cardEpoch = Date.UTC(2026, 5, 24, 17, 50, 59);
+  const photos = [
+    { id: 'unrelated-before', index: 0, type: 'image', width: 2049, height: 1537, capturedAtEpoch: Date.UTC(2026, 6, 15, 8) },
+    { id: 'card-30', index: 1, type: 'image', width: 1080, height: 1080, capturedAtEpoch: cardEpoch },
+    { id: 'photo-29-a', index: 2, type: 'image', width: 2049, height: 1537, capturedAtEpoch: Date.UTC(2026, 5, 29, 8) },
+    { id: 'card-29', index: 3, type: 'image', width: 1080, height: 1080, capturedAtEpoch: cardEpoch },
+    { id: 'photo-28-a', index: 4, type: 'image', width: 2049, height: 1537, capturedAtEpoch: Date.UTC(2026, 5, 28, 8) },
+    { id: 'card-28', index: 5, type: 'image', width: 1080, height: 1080, capturedAtEpoch: cardEpoch }
+  ];
+  const markers = inferAlbumOrderDateMarkers(photos);
+
+  assert.deepEqual(
+    markers.map((marker) => [marker.photoId, marker.date]),
+    [
+      ['card-30', '2026-06-30'],
+      ['card-29', '2026-06-29'],
+      ['card-28', '2026-06-28']
+    ]
+  );
+});
+
+test('infers larger generated date-card batches', () => {
+  const photos = [];
+  const baseEpoch = Date.UTC(2026, 6, 15, 8);
+  const cardEpoch = Date.UTC(2026, 6, 7, 14, 18, 55);
+
+  for (let offset = 0; offset < 52; offset += 1) {
+    const epoch = baseEpoch - offset * 24 * 60 * 60 * 1000;
+    const date = new Date(epoch).toISOString().slice(0, 10);
+    photos.push({ id: `photo-${date}`, index: offset * 2, type: 'image', width: 2049, height: 1537, capturedAtEpoch: epoch });
+    photos.push({ id: `card-${date}`, index: offset * 2 + 1, type: 'image', width: 1080, height: 1620, capturedAtEpoch: cardEpoch });
+  }
+
+  const markers = inferAlbumOrderDateMarkers(photos);
+
+  assert.equal(markers.length, 52);
+  assert.deepEqual(
+    markers.slice(0, 3).map((marker) => [marker.photoId, marker.date]),
+    [
+      ['card-2026-07-15', '2026-07-15'],
+      ['card-2026-07-14', '2026-07-14'],
+      ['card-2026-07-13', '2026-07-13']
+    ]
+  );
+});
+
 test('applies inferred date cards and marks separator images', () => {
   const cardEpoch = Date.UTC(2026, 7, 28, 11, 0, 51);
   const photos = [

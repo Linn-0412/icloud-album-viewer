@@ -1,6 +1,7 @@
 import { ICloudAlbumError, fetchSharedAlbumAssets, fetchSharedAlbumMetadata } from './icloud.js';
 
 const DEFAULT_CACHE_TTL_SECONDS = 600;
+const ALBUM_CACHE_VERSION = 'date-card-v3';
 const MAX_ASSET_IDS = 120;
 
 export function getAlbumUrl(payload = {}, env = {}) {
@@ -37,6 +38,7 @@ export async function getAlbumEntry(context, albumUrl, refresh = false) {
 
   const album = await fetchSharedAlbumMetadata(albumUrl, context.env);
   const entry = {
+    cacheVersion: ALBUM_CACHE_VERSION,
     baseUrl: album.baseUrl,
     metadata: album.metadata,
     photos: album.photos,
@@ -112,7 +114,12 @@ async function readAlbumCache(albumUrl) {
   }
 
   const entry = await response.json().catch(() => null);
-  if (!entry || !Array.isArray(entry.photos) || Number(entry.expiresAt || 0) <= Date.now()) {
+  if (
+    !entry ||
+    entry.cacheVersion !== ALBUM_CACHE_VERSION ||
+    !Array.isArray(entry.photos) ||
+    Number(entry.expiresAt || 0) <= Date.now()
+  ) {
     return null;
   }
 
@@ -134,5 +141,7 @@ async function writeAlbumCache(albumUrl, entry, ttlSeconds) {
 }
 
 function getAlbumCacheRequest(albumUrl) {
-  return new Request(`https://icloud-album-viewer.local/cache/album?url=${encodeURIComponent(albumUrl)}`);
+  return new Request(
+    `https://icloud-album-viewer.local/cache/album?v=${encodeURIComponent(ALBUM_CACHE_VERSION)}&url=${encodeURIComponent(albumUrl)}`
+  );
 }

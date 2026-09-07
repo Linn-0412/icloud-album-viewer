@@ -210,7 +210,7 @@ function dominantDateKey(segmentPhotos, excludedIds) {
 
 function groupDateCardCandidates(photos, options = {}) {
   const minCards = Number(options.minCards || 3);
-  const maxCards = Number(options.maxCards || 40);
+  const maxCards = Number(options.maxCards || 90);
   const minLongSide = Number(options.minLongSide || options.minHeight || 900);
   const minShortSide = Number(options.minShortSide || 500);
   const minAspect = Number(options.minAspect || 0.55);
@@ -250,7 +250,7 @@ function groupDateCardCandidates(photos, options = {}) {
 function inferDatesForCandidateGroup(photosByAlbumOrder, group) {
   const excludedIds = new Set(group.map((photo) => photo.id));
   const sortedGroup = [...group].sort((a, b) => Number(a.index || 0) - Number(b.index || 0));
-  const markerDates = sortedGroup.map((photo, index) => {
+  let markerDates = sortedGroup.map((photo, index) => {
     const previousIndex = index === 0 ? -1 : Number(sortedGroup[index - 1].index || 0);
     const segment = photosByAlbumOrder.filter(
       (candidate) => Number(candidate.index || 0) > previousIndex && Number(candidate.index || 0) < Number(photo.index || 0)
@@ -263,16 +263,66 @@ function inferDatesForCandidateGroup(photosByAlbumOrder, group) {
     };
   });
 
-  const knownDates = markerDates.filter((marker) => marker.date);
-  if (knownDates.length >= 1 && !markerDates[0].date) {
-    const firstKnownIndex = markerDates.findIndex((marker) => marker.date);
-    if (firstKnownIndex >= 0) {
-      markerDates[0].date = addDays(markerDates[firstKnownIndex].date, firstKnownIndex);
-      markerDates[0].inferred = true;
+  markerDates = smoothDailyMarkerDates(markerDates);
+
+  return markerDates.filter((marker) => marker.date);
+}
+
+function smoothDailyMarkerDates(markerDates) {
+  const run = findLongestDescendingDailyRun(markerDates);
+  if (run.length >= 2) {
+    const anchorDate = markerDates[run.start].date;
+    return markerDates.map((marker, index) => {
+      const expectedDate = addDays(anchorDate, run.start - index);
+      const expectedEpoch = normalizeDateOnly(expectedDate)?.epoch;
+      const currentEpoch = normalizeDateOnly(marker.date)?.epoch;
+      const shouldUseExpected =
+        Number.isFinite(expectedEpoch) &&
+        (!Number.isFinite(currentEpoch) || Math.abs(currentEpoch - expectedEpoch) > DAY_MS * 2);
+
+      return shouldUseExpected
+        ? {
+            ...marker,
+            date: expectedDate,
+            inferred: true
+          }
+        : marker;
+    });
+  }
+
+  const firstKnownIndex = markerDates.findIndex((marker) => marker.date);
+  if (firstKnownIndex >= 0 && !markerDates[0].date) {
+    markerDates[0].date = addDays(markerDates[firstKnownIndex].date, firstKnownIndex);
+    markerDates[0].inferred = true;
+  }
+
+  return markerDates;
+}
+
+function findLongestDescendingDailyRun(markerDates) {
+  let best = { start: -1, end: -1, length: 0 };
+  let start = -1;
+
+  for (let index = 0; index < markerDates.length; index += 1) {
+    const epoch = normalizeDateOnly(markerDates[index].date)?.epoch;
+    const previousEpoch = index > 0 ? normalizeDateOnly(markerDates[index - 1].date)?.epoch : null;
+
+    if (!Number.isFinite(epoch)) {
+      start = -1;
+      continue;
+    }
+
+    if (start < 0 || !Number.isFinite(previousEpoch) || previousEpoch - epoch !== DAY_MS) {
+      start = index;
+    }
+
+    const length = index - start + 1;
+    if (length > best.length) {
+      best = { start, end: index, length };
     }
   }
 
-  return markerDates.filter((marker) => marker.date);
+  return best;
 }
 
 function scoreMarkerDates(markerDates) {
