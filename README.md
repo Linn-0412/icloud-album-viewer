@@ -64,6 +64,12 @@ npx wrangler secret put ALBUM_VIEWER_SESSION_SECRET --name icloud-album-viewer
 
 招待メールを自動送信したい場合は、Cloudflare Worker から SMTP ではなくメール API を使います。現在の実装は Resend API に対応しています。
 
+Resend 側で必要なもの:
+
+- Resend アカウント
+- 送信元ドメインの認証
+- API Key
+
 ```bash
 npx wrangler secret put RESEND_API_KEY --name icloud-album-viewer
 npx wrangler secret put MAIL_FROM --name icloud-album-viewer
@@ -71,6 +77,8 @@ npx wrangler secret put MAIL_REPLY_TO --name icloud-album-viewer
 ```
 
 `RESEND_API_KEY` と `MAIL_FROM` が未設定でも、管理者ページに招待リンクが表示されるためアカウント発行はできます。
+
+メール設定後は `/admin` の「メール送信」から、自分宛にテストメールを送れます。
 
 ## D1
 

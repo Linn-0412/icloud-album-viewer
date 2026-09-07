@@ -109,6 +109,10 @@ export function renderAdminPage(currentUser, users, state = {}) {
       </td>
     </tr>
   `).join('');
+  const mailStatus = state.mailStatus || {};
+  const mailStatusText = mailStatus.configured
+    ? `メール送信: 有効（${mailStatus.provider} / ${mailStatus.from}）`
+    : 'メール送信: 未設定';
 
   return `<!doctype html>
 <html lang="ja">
@@ -154,6 +158,20 @@ export function renderAdminPage(currentUser, users, state = {}) {
             <input name="email" type="email" autocomplete="email" required>
           </label>
           <button class="primary" type="submit">アカウント発行</button>
+        </form>
+      </section>
+
+      <section>
+        <div>
+          <h2>メール送信</h2>
+          <p>${escapeHtml(mailStatusText)}</p>
+        </div>
+        <form class="issue-form" method="post" action="/admin/mail/test">
+          <label>
+            テスト送信先
+            <input name="email" type="email" value="${escapeHtml(currentUser.email)}" required ${mailStatus.configured ? '' : 'disabled'}>
+          </label>
+          <button class="primary" type="submit" ${mailStatus.configured ? '' : 'disabled'}>テスト送信</button>
         </form>
       </section>
 
@@ -526,6 +544,16 @@ function renderAdminStyles() {
         border-radius: 6px;
         color: var(--text);
         font: inherit;
+      }
+
+      input:disabled,
+      button:disabled {
+        cursor: not-allowed;
+        opacity: 0.58;
+      }
+
+      button.primary:disabled {
+        background: #78909a;
       }
 
       .notice,

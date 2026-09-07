@@ -1,7 +1,18 @@
 import { AppError, escapeHtml } from './http.js';
 
 export function isWorkerMailConfigured(env) {
-  return Boolean(env.RESEND_API_KEY && getMailFrom(env));
+  return getWorkerMailStatus(env).configured;
+}
+
+export function getWorkerMailStatus(env) {
+  const from = getMailFrom(env);
+  const hasResend = Boolean(env.RESEND_API_KEY);
+
+  return {
+    configured: Boolean(hasResend && from),
+    provider: hasResend ? 'Resend' : '',
+    from: from || ''
+  };
 }
 
 export async function sendInvitationEmail(env, { to, link, expiresAt }) {
@@ -29,6 +40,33 @@ export async function sendInvitationEmail(env, { to, link, expiresAt }) {
     <p>有効期限: ${escapeHtml(formattedExpiresAt)}</p>
   `;
 
+  return sendEmail(env, { to, subject, text, html });
+}
+
+export async function sendTestEmail(env, { to }) {
+  if (!isWorkerMailConfigured(env)) {
+    return {
+      sent: false,
+      reason: 'メールAPI未設定のため、テストメールは送信できません。'
+    };
+  }
+
+  return sendEmail(env, {
+    to,
+    subject: 'iCloud Album Viewer テストメール',
+    text: [
+      'iCloud Album Viewer からのテストメールです。',
+      '',
+      'このメールが届いていれば、招待メールの自動送信設定は有効です。'
+    ].join('\n'),
+    html: `
+      <p>iCloud Album Viewer からのテストメールです。</p>
+      <p>このメールが届いていれば、招待メールの自動送信設定は有効です。</p>
+    `
+  });
+}
+
+async function sendEmail(env, { to, subject, text, html }) {
   const payload = {
     from: getMailFrom(env),
     to: [to],

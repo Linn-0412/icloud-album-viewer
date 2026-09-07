@@ -30,7 +30,12 @@ import {
   setPasswordWithToken,
   toPublicUser
 } from '../functions/_lib/worker-auth.js';
-import { isWorkerMailConfigured, sendInvitationEmail } from '../functions/_lib/worker-mailer.js';
+import {
+  getWorkerMailStatus,
+  isWorkerMailConfigured,
+  sendInvitationEmail,
+  sendTestEmail
+} from '../functions/_lib/worker-mailer.js';
 import {
   renderAccountPage,
   renderAdminPage,
@@ -115,6 +120,14 @@ export default {
         }
 
         return handleAdminDeleteUserRequest(request, env, currentUser);
+      }
+
+      if (url.pathname === '/admin/mail/test' && request.method === 'POST') {
+        if (!isAdmin(currentUser)) {
+          return html(renderErrorPage('アクセス権がありません。'), 403);
+        }
+
+        return handleAdminTestMailRequest(request, env, currentUser);
       }
 
       if (url.pathname === '/api/config' && request.method === 'GET') {
@@ -320,11 +333,29 @@ async function handleAdminDeleteUserRequest(request, env, currentUser) {
   }
 }
 
+async function handleAdminTestMailRequest(request, env, currentUser) {
+  const params = await readFormBody(request);
+  const email = params.get('email') || currentUser.email;
+
+  try {
+    const result = await sendTestEmail(env, { to: email });
+    return renderAdminResponse(env, currentUser, {
+      message: result.sent ? `${email} にテストメールを送信しました。` : '',
+      mailNotice: result.sent ? '' : result.reason
+    });
+  } catch (error) {
+    return renderAdminResponse(env, currentUser, {
+      error: error.message
+    });
+  }
+}
+
 async function renderAdminResponse(env, currentUser, state = {}) {
   const users = await listUsers(env);
   return html(renderAdminPage(currentUser, users, {
     ...state,
-    mailConfigured: isWorkerMailConfigured(env)
+    mailConfigured: isWorkerMailConfigured(env),
+    mailStatus: getWorkerMailStatus(env)
   }));
 }
 
