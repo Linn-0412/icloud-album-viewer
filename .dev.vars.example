@@ -1,4 +1,16 @@
 ICLOUD_SHARED_ALBUM_URL="https://www.icloud.com/sharedalbum/ja-jp/#..."
 CACHE_TTL_SECONDS=600
+ALBUM_VIEWER_ADMIN_EMAIL=admin@example.com
+ALBUM_VIEWER_ADMIN_PASSWORD=change-this-password
+ALBUM_VIEWER_SESSION_SECRET=use-a-long-random-string
+ALBUM_VIEWER_ADMIN_RESET=false
+INVITE_TTL_HOURS=72
+
+# Cloudflare Workers cannot use Gmail SMTP directly. For automatic
+# invitation emails in the deployed Worker, use an email API such as Resend.
+# RESEND_API_KEY=re_xxxxxxxxx
+# MAIL_FROM="iCloud Album Viewer <album@example.com>"
+# MAIL_REPLY_TO=album@example.com
+
 # OPENAI_API_KEY=
 # OPENAI_VISION_MODEL=gpt-4.1-mini
