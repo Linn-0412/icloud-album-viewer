@@ -162,6 +162,29 @@ test('infers date cards from repeated album-order separator images', () => {
   );
 });
 
+test('infers square date cards created on the same day at different times', () => {
+  const cardEarly = Date.UTC(2026, 5, 22, 9, 15);
+  const cardLate = Date.UTC(2026, 5, 22, 11, 43);
+  const photos = [
+    { id: 'photo-24-a', index: 0, type: 'image', width: 2049, height: 1537, capturedAtEpoch: Date.UTC(2026, 5, 24, 8) },
+    { id: 'card-24', index: 1, type: 'image', width: 1170, height: 1170, capturedAtEpoch: cardLate },
+    { id: 'photo-23-a', index: 2, type: 'image', width: 2049, height: 1537, capturedAtEpoch: Date.UTC(2026, 5, 23, 8) },
+    { id: 'card-23', index: 3, type: 'image', width: 1170, height: 1170, capturedAtEpoch: cardLate },
+    { id: 'photo-22-a', index: 4, type: 'image', width: 2049, height: 1537, capturedAtEpoch: Date.UTC(2026, 5, 22, 8) },
+    { id: 'card-22', index: 5, type: 'image', width: 1170, height: 1170, capturedAtEpoch: cardEarly }
+  ];
+  const markers = inferAlbumOrderDateMarkers(photos);
+
+  assert.deepEqual(
+    markers.map((marker) => [marker.photoId, marker.date]),
+    [
+      ['card-24', '2026-06-24'],
+      ['card-23', '2026-06-23'],
+      ['card-22', '2026-06-22']
+    ]
+  );
+});
+
 test('applies inferred date cards and marks separator images', () => {
   const cardEpoch = Date.UTC(2026, 7, 28, 11, 0, 51);
   const photos = [

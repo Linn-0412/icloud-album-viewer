@@ -211,26 +211,33 @@ function dominantDateKey(segmentPhotos, excludedIds) {
 function groupDateCardCandidates(photos, options = {}) {
   const minCards = Number(options.minCards || 3);
   const maxCards = Number(options.maxCards || 40);
-  const minHeight = Number(options.minHeight || 900);
+  const minLongSide = Number(options.minLongSide || options.minHeight || 900);
+  const minShortSide = Number(options.minShortSide || 500);
+  const minAspect = Number(options.minAspect || 0.55);
+  const maxAspect = Number(options.maxAspect || 1.05);
   const groups = new Map();
 
   for (const photo of photos) {
     const width = Number(photo.width || 0);
     const height = Number(photo.height || 0);
     const aspect = height ? width / height : 0;
+    const longSide = Math.max(width, height);
+    const shortSide = Math.min(width, height);
+    const captureDateKey = toDateKey(Number(photo.capturedAtEpoch));
 
     if (
       photo.type !== 'image' ||
       !Number.isFinite(Number(photo.capturedAtEpoch)) ||
-      width < 500 ||
-      height < minHeight ||
-      aspect < 0.55 ||
-      aspect > 0.78
+      !captureDateKey ||
+      shortSide < minShortSide ||
+      longSide < minLongSide ||
+      aspect < minAspect ||
+      aspect > maxAspect
     ) {
       continue;
     }
 
-    const key = `${photo.capturedAtEpoch}|${width}|${height}`;
+    const key = `${captureDateKey}|${width}|${height}`;
     if (!groups.has(key)) {
       groups.set(key, []);
     }
