@@ -17,6 +17,3 @@ INVITE_TTL_HOURS=72
 # RESEND_API_KEY=re_xxxxxxxxx
 # MAIL_FROM="iCloud Album Viewer <album@example.com>"
 # MAIL_REPLY_TO=album@example.com
-
-# OPENAI_API_KEY=
-# OPENAI_VISION_MODEL=gpt-4.1-mini

@@ -5,8 +5,6 @@ import {
   serializeAlbumEntry
 } from '../functions/_lib/album-api.js';
 import { handleError, html, json, readFormBody, readJsonBody, redirect } from '../functions/_lib/http.js';
-import { applyDateMarkers } from '../functions/_lib/timeline.js';
-import { recognizeDateMarkers } from '../functions/_lib/vision.js';
 import {
   authenticateUser,
   changePassword,
@@ -133,7 +131,6 @@ export default {
       if (url.pathname === '/api/config' && request.method === 'GET') {
         return json({
           hasDefaultAlbum: Boolean(env.ICLOUD_SHARED_ALBUM_URL),
-          visionEnabled: Boolean(env.OPENAI_API_KEY),
           authEnabled: true,
           authMode: 'local',
           mailConfigured: isWorkerMailConfigured(env),
@@ -152,17 +149,6 @@ export default {
         const payload = await readJsonBody(request);
         const photos = await loadAssetPhotos({ request, env, ctx }, payload);
         return json({ photos });
-      }
-
-      if (url.pathname === '/api/date-markers' && request.method === 'POST') {
-        const payload = await readJsonBody(request, 8 * 1024 * 1024);
-        const photos = Array.isArray(payload.photos) ? payload.photos : [];
-        const result = await recognizeDateMarkers(photos, env);
-
-        return json({
-          ...result,
-          photos: applyDateMarkers(photos, result.markers, { mode: 'previous' })
-        });
       }
 
       if (url.pathname.startsWith('/api/')) {

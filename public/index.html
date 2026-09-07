@@ -40,8 +40,8 @@
 
         <div class="controls" id="controlsPanel" aria-label="表示設定">
           <div class="segmented" role="group" aria-label="並び順">
-            <button type="button" data-sort="asc" class="active">古い順</button>
-            <button type="button" data-sort="desc">新しい順</button>
+            <button type="button" data-sort="asc">古い順</button>
+            <button type="button" data-sort="desc" class="active">新しい順</button>
           </div>
           <label class="toggle">
             <input id="groupByDate" type="checkbox" checked>
@@ -51,7 +51,6 @@
             <input id="hideMarkers" type="checkbox" checked disabled>
             <span>日付カード非表示</span>
           </label>
-          <button class="secondary-button" type="button" id="detectMarkers" disabled>日付カード解析</button>
           <span class="user-badge" id="userBadge" hidden></span>
           <a class="secondary-button account-link" id="accountLink" href="/account" hidden>アカウント</a>
           <a class="secondary-button admin-link" id="adminLink" href="/admin" hidden>管理</a>
@@ -75,7 +74,7 @@
           <strong id="lightboxDate"></strong>
           <span id="lightboxCaption"></span>
         </div>
-        <a id="openOriginal" class="text-button" target="_blank" rel="noreferrer">原寸</a>
+        <a id="openOriginal" class="text-button" target="_blank" rel="noreferrer" download>保存</a>
         <button id="nextButton" type="button" class="icon-button" aria-label="次の写真">›</button>
         <button id="closeButton" type="button" class="icon-button" aria-label="閉じる">×</button>
       </div>

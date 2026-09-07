@@ -11,7 +11,6 @@ const countText = document.querySelector('#countText');
 const albumTitle = document.querySelector('#albumTitle');
 const groupByDateInput = document.querySelector('#groupByDate');
 const hideMarkersInput = document.querySelector('#hideMarkers');
-const detectMarkersButton = document.querySelector('#detectMarkers');
 const userBadge = document.querySelector('#userBadge');
 const accountLink = document.querySelector('#accountLink');
 const adminLink = document.querySelector('#adminLink');
@@ -46,7 +45,7 @@ const dayFormatter = new Intl.DateTimeFormat('ja-JP', {
 let photos = [];
 let originalPhotos = [];
 let visiblePhotos = [];
-let sortDirection = 'asc';
+let sortDirection = 'desc';
 let renderedCount = 0;
 let lastDateHeading = '';
 let activeIndex = 0;
@@ -116,6 +115,32 @@ function isVideo(photo) {
 
 function hasMediaUrl(photo) {
   return Boolean(photo?.gridUrl || photo?.fullUrl || photo?.videoUrl);
+}
+
+function getMediaUrl(photo) {
+  return photo.videoUrl || photo.fullUrl || photo.gridUrl || '';
+}
+
+function getUrlExtension(url, fallback) {
+  try {
+    const pathname = new URL(url, window.location.href).pathname;
+    const match = pathname.match(/\.([a-z0-9]{2,5})$/i);
+    if (match) {
+      return match[1].toLowerCase();
+    }
+  } catch {
+    // Ignore malformed asset URLs and use the media-type fallback.
+  }
+
+  return fallback;
+}
+
+function buildDownloadFileName(photo, url) {
+  const date = new Date(getEffectiveDate(photo));
+  const rawBase = Number.isFinite(date.getTime()) ? date.toISOString().replace(/[:.]/g, '-') : photo.id || 'item';
+  const base = String(rawBase).replace(/[^a-z0-9_-]+/gi, '-').slice(0, 80) || 'item';
+  const extension = getUrlExtension(url, isVideo(photo) ? 'mov' : 'jpg');
+  return `icloud-album-${base}.${extension}`;
 }
 
 function setStatus(message, count = visiblePhotos.length) {
@@ -381,7 +406,6 @@ function updateLoadedState(payload) {
 
   const markerCount = photos.filter((photo) => photo.isDateMarker).length;
   hideMarkersInput.disabled = markerCount === 0;
-  detectMarkersButton.disabled = photos.length === 0 || detectMarkersButton.dataset.enabled !== 'true';
   refreshButton.disabled = false;
   albumTitle.textContent = payload.metadata?.streamName || '共有アルバム';
 
@@ -407,61 +431,6 @@ async function loadAlbum(url, options = {}) {
   const payload = await readJsonResponse(response, '読み込みに失敗しました。');
 
   updateLoadedState(payload);
-}
-
-async function detectDateMarkers() {
-  detectMarkersButton.disabled = true;
-  detectMarkersButton.textContent = '解析中';
-  setStatus('日付カード解析中', photos.length);
-
-  try {
-    const inferredMarkerPhotos = originalPhotos.filter((photo) => photo.isDateMarker);
-    const sourcePhotos = inferredMarkerPhotos.length > 0 ? inferredMarkerPhotos : originalPhotos.filter(hasMediaUrl);
-    await loadMissingAssets(sourcePhotos, { silent: true, throwOnError: true });
-
-    const updatedInferredMarkerPhotos = originalPhotos.filter((photo) => photo.isDateMarker);
-    const candidatePhotos =
-      updatedInferredMarkerPhotos.length > 0 ? updatedInferredMarkerPhotos : originalPhotos.filter(hasMediaUrl);
-    if (candidatePhotos.length === 0) {
-      throw new Error('解析できる画像がまだ読み込まれていません。');
-    }
-
-    const markerCandidates = originalPhotos.map((photo) => ({
-      id: photo.id,
-      index: photo.index,
-      isDateMarker: photo.isDateMarker,
-      capturedAt: photo.capturedAt,
-      capturedAtEpoch: photo.capturedAtEpoch,
-      gridUrl: photo.gridUrl,
-      fullUrl: photo.fullUrl,
-      posterUrl: photo.posterUrl
-    })).filter((photo) => candidatePhotos.some((candidate) => candidate.id === photo.id));
-    const response = await jsonFetch('/api/date-markers', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ photos: markerCandidates })
-    });
-    const payload = await readJsonResponse(response, '日付カード解析に失敗しました。');
-
-    const markerCount = payload.markers.filter((marker) => marker.isDateMarker && marker.date).length;
-    const timelineById = new Map(payload.photos.map((photo) => [photo.id, photo]));
-    photos = originalPhotos
-      .map((photo) => ({
-        ...photo,
-        ...(timelineById.get(photo.id) || {})
-      }));
-    originalPhotos = photos.map((photo) => ({ ...photo }));
-    hideMarkersInput.disabled = markerCount === 0;
-    renderGallery();
-    setStatus(`${markerCount.toLocaleString('ja-JP')}件の日付カードを反映`, visiblePhotos.length);
-  } catch (error) {
-    setStatus(error.message, photos.length);
-  } finally {
-    detectMarkersButton.textContent = '日付カード解析';
-    detectMarkersButton.disabled = photos.length === 0 || detectMarkersButton.dataset.enabled !== 'true';
-  }
 }
 
 function setSortDirection(direction) {
@@ -512,7 +481,9 @@ async function openLightbox(index) {
 
   lightboxDate.textContent = `${formatDate(getEffectiveDate(photo))} / ${getDateSourceLabel(photo)}`;
   lightboxCaption.textContent = photo.caption || photo.contributor || '';
-  openOriginal.href = photo.videoUrl || photo.fullUrl || photo.gridUrl;
+  const mediaUrl = getMediaUrl(photo);
+  openOriginal.href = mediaUrl;
+  openOriginal.download = buildDownloadFileName(photo, mediaUrl);
   lightbox.hidden = false;
   closeButton.focus();
 }
@@ -598,7 +569,6 @@ hideMarkersInput.addEventListener('change', () => {
   renderGallery();
   setStatus(hideMarkersInput.checked ? '日付カードを非表示' : '日付カードを表示', visiblePhotos.length);
 });
-detectMarkersButton.addEventListener('click', detectDateMarkers);
 logoutButton.addEventListener('click', async () => {
   if (authMode === 'cloudflare-access') {
     window.location.assign('/cdn-cgi/access/logout');
@@ -679,11 +649,5 @@ jsonFetch('/api/config')
         });
     }
 
-    if (config.visionEnabled) {
-      detectMarkersButton.dataset.enabled = 'true';
-      detectMarkersButton.disabled = photos.length === 0;
-    }
   })
-  .catch(() => {
-    detectMarkersButton.disabled = true;
-  });
+  .catch(() => {});

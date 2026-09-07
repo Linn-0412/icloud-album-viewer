@@ -7,8 +7,6 @@ loadEnvFile();
 
 const { fetchSharedAlbumMetadata, fetchSharedAlbumAssets, ICloudAlbumError } = require('./src/icloud');
 const { AccountError, AccountStore } = require('./src/accounts');
-const { applyDateMarkers } = require('./src/timeline');
-const { recognizeDateMarkers } = require('./src/vision');
 const { isMailConfigured, sendInvitationEmail } = require('./src/mailer');
 const { DEFAULT_ALBUM_URL } = require('./src/site-config');
 
@@ -133,7 +131,6 @@ const server = http.createServer(async (request, response) => {
     if (request.method === 'GET' && requestUrl.pathname === '/api/config') {
       sendJson(response, 200, {
         hasDefaultAlbum: Boolean(DEFAULT_ALBUM_URL),
-        visionEnabled: Boolean(process.env.OPENAI_API_KEY),
         authEnabled: accountStore.hasUsers(),
         mailConfigured: isMailConfigured(),
         user: toPublicUser(currentUser)
@@ -148,11 +145,6 @@ const server = http.createServer(async (request, response) => {
 
     if (request.method === 'POST' && requestUrl.pathname === '/api/assets') {
       await handleAssetRequest(request, response);
-      return;
-    }
-
-    if (request.method === 'POST' && requestUrl.pathname === '/api/date-markers') {
-      await handleDateMarkerRequest(request, response);
       return;
     }
 
@@ -407,17 +399,6 @@ async function handleAssetRequest(request, response) {
       .map((id) => updatedPhotosById.get(id))
       .filter(Boolean)
       .map(toPublicPhoto)
-  });
-}
-
-async function handleDateMarkerRequest(request, response) {
-  const payload = await readJsonBody(request, 8 * 1024 * 1024);
-  const photos = Array.isArray(payload.photos) ? payload.photos : [];
-  const result = await recognizeDateMarkers(photos);
-
-  sendJson(response, 200, {
-    ...result,
-    photos: applyDateMarkers(photos, result.markers, { mode: 'previous' })
   });
 }
 

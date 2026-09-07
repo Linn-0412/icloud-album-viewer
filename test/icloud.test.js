@@ -8,7 +8,6 @@ const {
   sortPhotos
 } = require('../src/icloud');
 const { applyDateMarkers, inferAlbumOrderDateMarkers, applyInferredDateCards } = require('../src/timeline');
-const { parseJsonArray, normalizeMarkerResult } = require('../src/vision');
 
 test('parses iCloud shared album token from a public URL fragment', () => {
   assert.equal(
@@ -248,20 +247,3 @@ test('applies inferred date cards and marks separator images', () => {
   assert.equal(timeline.photos.find((photo) => photo.id === 'sep6-a').markerDate, '2026-09-06');
 });
 
-test('parses marker JSON returned from a fenced model response', () => {
-  const parsed = parseJsonArray(
-    '```json\n[{"photoId":"p1","isDateMarker":true,"date":"2026-09-06","confidence":0.9}]\n```'
-  );
-
-  assert.equal(parsed[0].photoId, 'p1');
-});
-
-test('drops marker results for unknown photo IDs', () => {
-  assert.equal(
-    normalizeMarkerResult(
-      { photoId: 'unknown', isDateMarker: true, date: '2026-09-06', confidence: 0.9 },
-      new Set(['known'])
-    ),
-    null
-  );
-});
