@@ -59,7 +59,7 @@ GitHubにはプライベートリポジトリとしてソースコードを置�
 
 ## Cloudflare無料運用
 
-Cloudflare Pages + Pages Functions + Cloudflare Accessで運用できます。この構成ではアプリ内のログイン、SMTP、ユーザー管理をCloudflare Accessに任せます。
+Cloudflare Workers + Static Assets + Cloudflare Accessで運用できます。この構成ではアプリ内のログイン、SMTP、ユーザー管理をCloudflare Accessに任せます。
 
 Cloudflare側には以下の環境変数を設定します。
 

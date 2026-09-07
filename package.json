@@ -6,8 +6,8 @@
   "scripts": {
     "start": "node server.js",
     "test": "node --test",
-    "cf:dev": "wrangler pages dev public",
-    "cf:deploy": "wrangler pages deploy public --project-name icloud-album-viewer --branch main"
+    "cf:dev": "wrangler dev",
+    "cf:deploy": "wrangler deploy"
   },
   "engines": {
     "node": ">=20"
