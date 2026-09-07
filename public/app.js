@@ -10,6 +10,8 @@ const albumTitle = document.querySelector('#albumTitle');
 const groupByDateInput = document.querySelector('#groupByDate');
 const hideMarkersInput = document.querySelector('#hideMarkers');
 const detectMarkersButton = document.querySelector('#detectMarkers');
+const userBadge = document.querySelector('#userBadge');
+const accountLink = document.querySelector('#accountLink');
 const adminLink = document.querySelector('#adminLink');
 const logoutButton = document.querySelector('#logoutButton');
 const sortButtons = [...document.querySelectorAll('[data-sort]')];
@@ -47,6 +49,7 @@ let lastDateHeading = '';
 let activeIndex = 0;
 let observer = null;
 let assetRequests = new Set();
+let authMode = 'local';
 
 function formatDate(value) {
   if (!value) {
@@ -96,13 +99,18 @@ function setStatus(message, count = visiblePhotos.length) {
 }
 
 function redirectToLogin() {
+  if (authMode === 'cloudflare-access') {
+    window.location.reload();
+    return;
+  }
+
   window.location.assign('/login');
 }
 
 async function readJsonResponse(response, fallbackMessage) {
   const payload = await response.json().catch(() => ({}));
 
-  if (response.status === 401) {
+  if (response.status === 401 || response.status === 403) {
     redirectToLogin();
     throw new Error('ログインが必要です。');
   }
@@ -112,6 +120,17 @@ async function readJsonResponse(response, fallbackMessage) {
   }
 
   return payload;
+}
+
+function jsonFetch(url, options = {}) {
+  return fetch(url, {
+    ...options,
+    headers: {
+      Accept: 'application/json',
+      'X-Requested-With': 'XMLHttpRequest',
+      ...(options.headers || {})
+    }
+  });
 }
 
 function sortCurrentPhotos() {
@@ -275,7 +294,7 @@ async function loadMissingAssets(targetPhotos, options = {}) {
   missingIds.forEach((id) => assetRequests.add(id));
 
   try {
-    const response = await fetch('/api/assets', {
+    const response = await jsonFetch('/api/assets', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -353,7 +372,7 @@ async function loadAlbum(url, options = {}) {
   refreshButton.disabled = true;
   setStatus('読み込み中', 0);
 
-  const response = await fetch('/api/album', {
+  const response = await jsonFetch('/api/album', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
@@ -392,7 +411,7 @@ async function detectDateMarkers() {
       fullUrl: photo.fullUrl,
       posterUrl: photo.posterUrl
     })).filter((photo) => candidatePhotos.some((candidate) => candidate.id === photo.id));
-    const response = await fetch('/api/date-markers', {
+    const response = await jsonFetch('/api/date-markers', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -492,6 +511,31 @@ function moveLightbox(step) {
   });
 }
 
+function configureAuth(config) {
+  authMode = config.authMode || 'local';
+
+  if (config.user?.email) {
+    userBadge.textContent = config.user.email;
+    userBadge.hidden = false;
+  }
+
+  if (!config.authEnabled) {
+    return;
+  }
+
+  logoutButton.hidden = false;
+  if (authMode === 'cloudflare-access') {
+    accountLink.hidden = true;
+    adminLink.hidden = true;
+    return;
+  }
+
+  accountLink.hidden = false;
+  if (config.user?.isAdmin) {
+    adminLink.hidden = false;
+  }
+}
+
 form.addEventListener('submit', async (event) => {
   event.preventDefault();
 
@@ -531,6 +575,11 @@ hideMarkersInput.addEventListener('change', () => {
 });
 detectMarkersButton.addEventListener('click', detectDateMarkers);
 logoutButton.addEventListener('click', async () => {
+  if (authMode === 'cloudflare-access') {
+    window.location.assign('/cdn-cgi/access/logout');
+    return;
+  }
+
   await fetch('/logout', { method: 'POST' }).catch(() => {});
   redirectToLogin();
 });
@@ -575,9 +624,11 @@ document.addEventListener('keydown', (event) => {
 setupInfiniteScroll();
 renderGallery();
 
-fetch('/api/config')
+jsonFetch('/api/config')
   .then((response) => readJsonResponse(response, '設定の取得に失敗しました。'))
   .then((config) => {
+    configureAuth(config);
+
     if (config.hasDefaultAlbum) {
       form.classList.add('is-default-album');
       albumUrlInput.required = false;
@@ -595,10 +646,6 @@ fetch('/api/config')
     if (config.visionEnabled) {
       detectMarkersButton.dataset.enabled = 'true';
       detectMarkersButton.disabled = photos.length === 0;
-    }
-
-    if (config.user?.isAdmin) {
-      adminLink.hidden = false;
     }
   })
   .catch(() => {

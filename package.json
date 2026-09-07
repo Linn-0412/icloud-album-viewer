@@ -5,12 +5,17 @@
   "description": "Lightweight chronological viewer for public iCloud shared album links.",
   "scripts": {
     "start": "node server.js",
-    "test": "node --test"
+    "test": "node --test",
+    "cf:dev": "wrangler pages dev public",
+    "cf:deploy": "wrangler pages deploy public --project-name icloud-album-viewer --branch main"
   },
   "engines": {
     "node": ">=20"
   },
   "dependencies": {
     "nodemailer": "^10.0.0"
+  },
+  "devDependencies": {
+    "wrangler": "^4.129.0"
   }
 }

@@ -1,0 +1,4 @@
+ICLOUD_SHARED_ALBUM_URL="https://www.icloud.com/sharedalbum/ja-jp/#..."
+CACHE_TTL_SECONDS=600
+# OPENAI_API_KEY=
+# OPENAI_VISION_MODEL=gpt-4.1-mini

@@ -24,7 +24,7 @@ ALBUM_VIEWER_ADMIN_PASSWORD=change-this-password
 ALBUM_VIEWER_SESSION_SECRET=use-a-long-random-string
 ALBUM_VIEWER_ADMIN_RESET=false
 INVITE_TTL_HOURS=72
-ICLOUD_SHARED_ALBUM_URL=https://www.icloud.com/sharedalbum/ja-jp/#...
+ICLOUD_SHARED_ALBUM_URL="https://www.icloud.com/sharedalbum/ja-jp/#..."
 
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
@@ -56,6 +56,31 @@ SMTP未設定でもアカウント発行はできます。その場合、管理�
 このアプリはNode.jsサーバーで動きます。ログイン、SMTP、iCloudアルバム取得、ユーザー保存をサーバー側で処理するため、GitHub Pagesのような静的ホスティングだけでは動作しません。
 
 GitHubにはプライベートリポジトリとしてソースコードを置き、本番公開はNode.jsが動く環境に配置してください。`.env` と `data/` はリポジトリに含めません。
+
+## Cloudflare無料運用
+
+Cloudflare Pages + Pages Functions + Cloudflare Accessで運用できます。この構成ではアプリ内のログイン、SMTP、ユーザー管理をCloudflare Accessに任せます。
+
+Cloudflare側には以下の環境変数を設定します。
+
+```env
+ICLOUD_SHARED_ALBUM_URL="https://www.icloud.com/sharedalbum/ja-jp/#..."
+CACHE_TTL_SECONDS=600
+```
+
+OpenAI画像認識を使う場合だけ、追加で `OPENAI_API_KEY` を設定します。費用ゼロ運用を優先する場合は未設定のままにしてください。
+
+ローカルでCloudflare版を確認する場合は `.dev.vars.example` を参考に `.dev.vars` を作り、以下を実行します。
+
+```bash
+npm run cf:dev
+```
+
+Cloudflareへ直接デプロイする場合は以下です。
+
+```bash
+npm run cf:deploy
+```
 
 ## コマンド
 
