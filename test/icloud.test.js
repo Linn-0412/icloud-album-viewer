@@ -206,6 +206,62 @@ test('repairs a leading date-card outlier from a daily run', () => {
   );
 });
 
+test('keeps a real date-card date when it sits outside a nearby daily run', () => {
+  const cardEpoch = Date.UTC(2026, 8, 20, 12, 0, 0);
+  const photos = [
+    { id: 'filler-0', index: 0, type: 'image', width: 2049, height: 1537, capturedAtEpoch: Date.UTC(2026, 7, 14, 8) },
+    { id: 'card-aug14', index: 1, type: 'image', width: 1080, height: 1080, capturedAtEpoch: cardEpoch },
+    { id: 'card-unrelated', index: 2, type: 'image', width: 1080, height: 1080, capturedAtEpoch: cardEpoch },
+    { id: 'filler-2', index: 3, type: 'image', width: 2049, height: 1537, capturedAtEpoch: Date.UTC(2026, 8, 15, 8) },
+    { id: 'card-sep15', index: 4, type: 'image', width: 1080, height: 1080, capturedAtEpoch: cardEpoch },
+    { id: 'filler-3', index: 5, type: 'image', width: 2049, height: 1537, capturedAtEpoch: Date.UTC(2026, 8, 14, 8) },
+    { id: 'card-sep14', index: 6, type: 'image', width: 1080, height: 1080, capturedAtEpoch: cardEpoch }
+  ];
+  const markers = inferAlbumOrderDateMarkers(photos);
+  const markersById = new Map(markers.map((marker) => [marker.photoId, marker.date]));
+
+  assert.equal(markersById.get('card-aug14'), '2026-08-14');
+  assert.equal(markersById.get('card-sep15'), '2026-09-15');
+  assert.equal(markersById.get('card-sep14'), '2026-09-14');
+});
+
+test('does not treat a burst of real same-day, same-size photos as generated date cards', () => {
+  const day = Date.UTC(2026, 5, 22, 10, 0, 0);
+  const photos = [
+    { id: 'real-1', index: 0, type: 'image', width: 1080, height: 1080, capturedAtEpoch: day, fileSize: 180000 },
+    { id: 'real-2', index: 1, type: 'image', width: 1080, height: 1080, capturedAtEpoch: day, fileSize: 4200000 },
+    { id: 'real-3', index: 2, type: 'image', width: 1080, height: 1080, capturedAtEpoch: day, fileSize: 950000 },
+    { id: 'real-4', index: 3, type: 'image', width: 1080, height: 1080, capturedAtEpoch: day, fileSize: 210000 }
+  ];
+
+  const markers = inferAlbumOrderDateMarkers(photos);
+
+  assert.deepEqual(markers, []);
+});
+
+test('still detects generated date cards when file sizes are consistent', () => {
+  const cardEarly = Date.UTC(2026, 5, 22, 9, 15);
+  const cardLate = Date.UTC(2026, 5, 22, 11, 43);
+  const photos = [
+    { id: 'photo-24-a', index: 0, type: 'image', width: 2049, height: 1537, capturedAtEpoch: Date.UTC(2026, 5, 24, 8) },
+    { id: 'card-24', index: 1, type: 'image', width: 1170, height: 1170, capturedAtEpoch: cardLate, fileSize: 152000 },
+    { id: 'photo-23-a', index: 2, type: 'image', width: 2049, height: 1537, capturedAtEpoch: Date.UTC(2026, 5, 23, 8) },
+    { id: 'card-23', index: 3, type: 'image', width: 1170, height: 1170, capturedAtEpoch: cardLate, fileSize: 149000 },
+    { id: 'photo-22-a', index: 4, type: 'image', width: 2049, height: 1537, capturedAtEpoch: Date.UTC(2026, 5, 22, 8) },
+    { id: 'card-22', index: 5, type: 'image', width: 1170, height: 1170, capturedAtEpoch: cardEarly, fileSize: 155000 }
+  ];
+  const markers = inferAlbumOrderDateMarkers(photos);
+
+  assert.deepEqual(
+    markers.map((marker) => [marker.photoId, marker.date]),
+    [
+      ['card-24', '2026-06-24'],
+      ['card-23', '2026-06-23'],
+      ['card-22', '2026-06-22']
+    ]
+  );
+});
+
 test('infers larger generated date-card batches', () => {
   const photos = [];
   const baseEpoch = Date.UTC(2026, 6, 15, 8);

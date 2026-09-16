@@ -373,6 +373,7 @@ export function normalizePhoto(photo, index, urlsByChecksum) {
     contributor: photo.contributorFullName || [photo.contributorFirstName, photo.contributorLastName].filter(Boolean).join(' '),
     width: Number(photo.width || largestDerivative?.width || 0),
     height: Number(photo.height || largestDerivative?.height || 0),
+    fileSize: Number(largestDerivative?.fileSize || 0),
     type: isVideo ? 'video' : 'image',
     capturedAt: dateInfo.capturedAt,
     capturedAtEpoch: dateInfo.capturedAtEpoch,

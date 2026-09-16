@@ -215,7 +215,20 @@ function groupDateCardCandidates(photos, options = {}) {
   const minShortSide = Number(options.minShortSide || 500);
   const minAspect = Number(options.minAspect || 0.55);
   const maxAspect = Number(options.maxAspect || 1.05);
+  const maxDimensionShare = Number(options.maxDimensionShare ?? 0.05);
   const groups = new Map();
+
+  const dimensionCounts = new Map();
+  let totalImages = 0;
+  for (const photo of photos) {
+    if (photo.type !== 'image') {
+      continue;
+    }
+    totalImages += 1;
+    const dimensionKey = `${Number(photo.width || 0)}x${Number(photo.height || 0)}`;
+    dimensionCounts.set(dimensionKey, (dimensionCounts.get(dimensionKey) || 0) + 1);
+  }
+  const maxDimensionCount = Math.max(maxCards, totalImages * maxDimensionShare);
 
   for (const photo of photos) {
     const width = Number(photo.width || 0);
@@ -224,6 +237,7 @@ function groupDateCardCandidates(photos, options = {}) {
     const longSide = Math.max(width, height);
     const shortSide = Math.min(width, height);
     const captureDateKey = toDateKey(Number(photo.capturedAtEpoch));
+    const dimensionKey = `${width}x${height}`;
 
     if (
       photo.type !== 'image' ||
@@ -232,7 +246,8 @@ function groupDateCardCandidates(photos, options = {}) {
       shortSide < minShortSide ||
       longSide < minLongSide ||
       aspect < minAspect ||
-      aspect > maxAspect
+      aspect > maxAspect ||
+      dimensionCounts.get(dimensionKey) > maxDimensionCount
     ) {
       continue;
     }
@@ -244,7 +259,22 @@ function groupDateCardCandidates(photos, options = {}) {
     groups.get(key).push(photo);
   }
 
-  return [...groups.values()].filter((group) => group.length >= minCards && group.length <= maxCards);
+  return [...groups.values()].filter(
+    (group) => group.length >= minCards && group.length <= maxCards && looksLikeGeneratedCardGroup(group)
+  );
+}
+
+const MAX_CARD_FILE_SIZE_RATIO = 3;
+
+function looksLikeGeneratedCardGroup(group) {
+  const sizes = group.map((photo) => Number(photo.fileSize || 0)).filter((size) => size > 0);
+  if (sizes.length < group.length) {
+    return true;
+  }
+
+  const max = Math.max(...sizes);
+  const min = Math.min(...sizes);
+  return max <= min * MAX_CARD_FILE_SIZE_RATIO;
 }
 
 function inferDatesForCandidateGroup(photosByAlbumOrder, group) {
@@ -268,61 +298,50 @@ function inferDatesForCandidateGroup(photosByAlbumOrder, group) {
   return markerDates.filter((marker) => marker.date);
 }
 
+// Repairs a marker's date only when its immediate neighbors already agree on a
+// daily cadence, so a lone bad reading gets snapped to fit while a genuine
+// multi-day gap between two correct cards is left alone.
 function smoothDailyMarkerDates(markerDates) {
-  const run = findLongestDescendingDailyRun(markerDates);
-  if (run.length >= 2) {
-    const anchorDate = markerDates[run.start].date;
-    return markerDates.map((marker, index) => {
-      const expectedDate = addDays(anchorDate, run.start - index);
-      const expectedEpoch = normalizeDateOnly(expectedDate)?.epoch;
-      const currentEpoch = normalizeDateOnly(marker.date)?.epoch;
-      const shouldUseExpected =
-        Number.isFinite(expectedEpoch) &&
-        (!Number.isFinite(currentEpoch) || Math.abs(currentEpoch - expectedEpoch) > DAY_MS * 2);
+  return markerDates.map((marker, index) => {
+    const expectedEpoch = inferExpectedEpochFromNeighbors(markerDates, index);
+    if (!Number.isFinite(expectedEpoch)) {
+      return marker;
+    }
 
-      return shouldUseExpected
-        ? {
-            ...marker,
-            date: expectedDate,
-            inferred: true
-          }
-        : marker;
-    });
-  }
+    const currentEpoch = normalizeDateOnly(marker.date)?.epoch;
+    const shouldUseExpected = !Number.isFinite(currentEpoch) || Math.abs(currentEpoch - expectedEpoch) > DAY_MS * 2;
+    if (!shouldUseExpected) {
+      return marker;
+    }
 
-  const firstKnownIndex = markerDates.findIndex((marker) => marker.date);
-  if (firstKnownIndex >= 0 && !markerDates[0].date) {
-    markerDates[0].date = addDays(markerDates[firstKnownIndex].date, firstKnownIndex);
-    markerDates[0].inferred = true;
-  }
-
-  return markerDates;
+    return {
+      ...marker,
+      date: toDateKey(expectedEpoch),
+      inferred: true
+    };
+  });
 }
 
-function findLongestDescendingDailyRun(markerDates) {
-  let best = { start: -1, end: -1, length: 0 };
-  let start = -1;
+function inferExpectedEpochFromNeighbors(markerDates, index) {
+  const epochAt = (i) => (i >= 0 && i < markerDates.length ? normalizeDateOnly(markerDates[i].date)?.epoch : undefined);
+  const leftEpoch = epochAt(index - 1);
+  const rightEpoch = epochAt(index + 1);
 
-  for (let index = 0; index < markerDates.length; index += 1) {
-    const epoch = normalizeDateOnly(markerDates[index].date)?.epoch;
-    const previousEpoch = index > 0 ? normalizeDateOnly(markerDates[index - 1].date)?.epoch : null;
-
-    if (!Number.isFinite(epoch)) {
-      start = -1;
-      continue;
-    }
-
-    if (start < 0 || !Number.isFinite(previousEpoch) || previousEpoch - epoch !== DAY_MS) {
-      start = index;
-    }
-
-    const length = index - start + 1;
-    if (length > best.length) {
-      best = { start, end: index, length };
-    }
+  if (Number.isFinite(leftEpoch) && Number.isFinite(rightEpoch) && leftEpoch - rightEpoch === DAY_MS * 2) {
+    return leftEpoch - DAY_MS;
   }
 
-  return best;
+  const leftLeftEpoch = epochAt(index - 2);
+  if (Number.isFinite(leftEpoch) && Number.isFinite(leftLeftEpoch) && leftLeftEpoch - leftEpoch === DAY_MS) {
+    return leftEpoch - DAY_MS;
+  }
+
+  const rightRightEpoch = epochAt(index + 2);
+  if (Number.isFinite(rightEpoch) && Number.isFinite(rightRightEpoch) && rightEpoch - rightRightEpoch === DAY_MS) {
+    return rightEpoch + DAY_MS;
+  }
+
+  return null;
 }
 
 function scoreMarkerDates(markerDates) {
